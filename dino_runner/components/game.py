@@ -1,10 +1,8 @@
 import pygame
 
-from dino_runner.utils.constants import BG, ICON, SCREEN_HEIGHT, SCREEN_WIDTH, TITLE, FPS
+from dino_runner.utils.constants import BG, ICON, SCREEN_HEIGHT, SCREEN_WIDTH, TITLE, FPS, FONT_STYLE, HEART
 from dino_runner.components.dinosaur import Dinosaur
 from dino_runner.components.obstacles.obstacle_manager import ObstacleManager
-
-FONT_STYLE = "freesansbold.ttf"
 
 
 class Game:
@@ -20,7 +18,10 @@ class Game:
         self.x_pos_bg = 0
         self.y_pos_bg = 380
         self.score = 0
+        self.lifes = 3
+        self.collide_count = 0
         self.death_count = 0
+        self.high_score = []
 
         self.player = Dinosaur()
         self.obstacle_manager = ObstacleManager()    
@@ -37,7 +38,7 @@ class Game:
     def run(self):
         # Game loop: events - update - draw
         self.playing = True
-        self.obstacle_manager.reset_obstacles()
+        self.reset_data()
         while self.playing:
             self.events()
             self.update()
@@ -53,11 +54,20 @@ class Game:
         self.player.update(user_input)
         self.obstacle_manager.update(self)
         self.update_score()
+        self.update_high_score()
+        self.update_lifes()
 
     def update_score(self):
-        self.score += 1
+        self.score += 0.5
         if self.score % 100 == 0:
             self.game_speed += 5
+
+    def update_high_score(self):
+        self.high_score.append(self.score)
+
+    def update_lifes(self):
+        self.lifes -= self.collide_count
+        self.collide_count = 0
 
     def draw(self):
         self.clock.tick(FPS)
@@ -66,6 +76,8 @@ class Game:
         self.player.draw(self.screen)
         self.obstacle_manager.draw(self.screen)
         self.draw_score()
+        self.draw_high_score()
+        self.draw_lifes()
         pygame.display.update()
         pygame.display.flip()
 
@@ -78,13 +90,26 @@ class Game:
             self.x_pos_bg = 0
         self.x_pos_bg -= self.game_speed
 
-    def draw_score(self):
-        font = pygame.font.Font(FONT_STYLE, 22)
-        text = font.render(f"Score: {self.score}", True, (0, 0, 0))
-        text_rect = text.get_rect()
-        text_rect.center = (1000, 50)
-        self.screen.blit(text, text_rect)
+    def draw_text(self, text, size, position):
+        font = pygame.font.Font(FONT_STYLE, size)
+        text_render = font.render(text, False, (83, 83, 83)) 
+        text_rect = text_render.get_rect() 
+        text_rect.center = position 
+        self.screen.blit(text_render, text_rect)
 
+    def draw_score(self):
+        self.draw_text(f"{str(int(self.score)).zfill(5)}", 14, (1000, 50))
+    
+    def draw_high_score(self):
+        self.draw_text(f"HI {str(int(max(self.high_score))).zfill(5)}", 14, (895, 50))
+
+    def draw_lifes(self):
+        heart_x = 50
+
+        for i in range(self.lifes):
+            self.screen.blit(HEART, (heart_x, 50))
+            heart_x += HEART.get_width() + 20
+            
     def handle_events_on_menu(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -99,13 +124,13 @@ class Game:
         half_screen_width = SCREEN_WIDTH // 2
 
         if self.death_count == 0:
-            font = pygame.font.Font(FONT_STYLE, 22)
-            text = font.render("Press any key to start", True, (0, 0, 0))
-            text_rect = text.get_rect()
-            text_rect.center = (half_screen_width, half_screen_height)
-            self.screen.blit(text, text_rect)
+            self.draw_text("Press any key to start", 18, (half_screen_width, half_screen_height))
         else:
-            self.screen.blit(ICON, (half_screen_width - 20, half_screen_height - 140))
+            self.screen.blit(ICON, (half_screen_width - 40, half_screen_height - 200))
+            self.draw_text("Press any key to restart", 18, (half_screen_width, half_screen_height))
+            self.draw_text(f"HIGH SCORE: {str(int(max(self.high_score))).zfill(5)}", 14, (half_screen_width, half_screen_height + 100))
+            self.draw_text(f"DEATHS: {self.death_count}", 14, (half_screen_width, half_screen_height + 200))
+
             # MOSTRAR MENSAGEM "Press any key to restart"
             # MOSTRAR score ATINGIDO
             # MOSTRAR death_count
@@ -115,3 +140,10 @@ class Game:
 
         pygame.display.update()  # ou .flip()
         self.handle_events_on_menu()
+
+    def reset_data(self):
+        self.obstacle_manager.reset_obstacles()
+        self.game_speed = 20
+        self.score = 0
+        self.lifes = 3
+        self.player.dino_jump = False
