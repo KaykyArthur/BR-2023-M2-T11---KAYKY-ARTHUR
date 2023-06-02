@@ -1,9 +1,10 @@
 import pygame
 
-from dino_runner.utils.constants import BG, ICON, SCREEN_HEIGHT, SCREEN_WIDTH, TITLE, FPS, FONT_STYLE, HEART, DEFAULT_TYPE
+from dino_runner.utils.constants import BG, ICON, SCREEN_HEIGHT, SCREEN_WIDTH, TITLE, FPS, FONT_STYLE, HEART, EMPTY_HEART, GAME_OVER, DEFAULT_TYPE
 from dino_runner.components.dinosaur import Dinosaur
 from dino_runner.components.obstacles.obstacle_manager import ObstacleManager
 from dino_runner.components.power_ups.power_up_manager import PowerUpManager
+
 
 class Game:
     def __init__(self):
@@ -50,6 +51,7 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.playing = False
+                self.running = False
 
     def update(self):
         user_input = pygame.key.get_pressed()
@@ -62,8 +64,9 @@ class Game:
 
     def update_score(self):
         self.score += 0.5
-        if self.score % 100 == 0:
-            self.game_speed += 5
+        if self.game_speed <= 30:
+            if self.score % 100 == 0:
+                self.game_speed += 2.5
 
     def update_high_score(self):
         self.high_score.append(self.score)
@@ -83,7 +86,6 @@ class Game:
         self.draw_lifes()
         self.draw_power_up_time()
         self.power_up_manager.draw(self.screen)
-        pygame.display.update()
         pygame.display.flip()
 
     def draw_background(self):
@@ -109,21 +111,23 @@ class Game:
         self.draw_text(f"HI {str(int(max(self.high_score))).zfill(5)}", 14, (895, 50))
 
     def draw_lifes(self):
-        heart_x = 50
-
+        heart_x = 35
+        for i in range(3):
+            self.screen.blit(EMPTY_HEART, (heart_x, 33))
+            heart_x += HEART.get_width() + 20
+        heart_x = 35
         for i in range(self.lifes):
-            self.screen.blit(HEART, (heart_x, 50))
+            self.screen.blit(HEART, (heart_x, 35))
             heart_x += HEART.get_width() + 20
             
     def draw_power_up_time(self):
         if self.player.has_power_up:
             time_to_show = round((self.player.power_up_time - pygame.time.get_ticks()) / 1000, 2)
             if time_to_show >= 0:
-                self.draw_text(f"{self.player.type.capitalize()} enabled for {time_to_show} seconds", 18, (500, 40))
+                self.draw_text(f"{self.player.type.capitalize()} enabled for {time_to_show:.2f} seconds", 14, (500, 46))
             else:
                 self.player.has_power_up = False
                 self.player.type = DEFAULT_TYPE
-
 
     def handle_events_on_menu(self):
         for event in pygame.event.get():
@@ -131,7 +135,8 @@ class Game:
                 self.playing = False
                 self.running = False
             elif event.type == pygame.KEYDOWN:
-                self.run()
+                if event.key == pygame.K_SPACE:
+                    self.run()
 
     def show_menu(self):
         self.screen.fill((255, 255, 255))
@@ -139,21 +144,16 @@ class Game:
         half_screen_width = SCREEN_WIDTH // 2
 
         if self.death_count == 0:
-            self.draw_text("Press any key to start", 18, (half_screen_width, half_screen_height))
+            self.draw_text("J A L A  D I N O  R U N N E R", 20, (half_screen_width, half_screen_height - 160))
+            self.draw_text("Press SPACE to start", 18, (half_screen_width, half_screen_height))
         else:
-            self.screen.blit(ICON, (half_screen_width - 40, half_screen_height - 200))
-            self.draw_text("Press any key to restart", 18, (half_screen_width, half_screen_height))
+            self.screen.blit(GAME_OVER, (half_screen_width - 190, half_screen_height - 140))
+            self.draw_text("Press SPACE to restart", 18, (half_screen_width, half_screen_height))
             self.draw_text(f"HIGH SCORE: {str(int(max(self.high_score))).zfill(5)}", 14, (half_screen_width, half_screen_height + 100))
+            self.draw_text(f"YOUR HIGH SCORE: {str(int(self.score)).zfill(5)}", 14, (half_screen_width, half_screen_height + 150))
             self.draw_text(f"DEATHS: {self.death_count}", 14, (half_screen_width, half_screen_height + 200))
 
-            # MOSTRAR MENSAGEM "Press any key to restart"
-            # MOSTRAR score ATINGIDO
-            # MOSTRAR death_count
-
-            ## Resetar score e game_speed quando uma partida for recomeçada
-            ## Criar método para remover repetição de código do texto
-
-        pygame.display.update()  # ou .flip()
+        pygame.display.flip()
         self.handle_events_on_menu()
 
     def reset_data(self):
